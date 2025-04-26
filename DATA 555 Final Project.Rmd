@@ -1,0 +1,108 @@
+---
+title: "Interactive Vaccine Data Visualizations"
+author: "Jiani Wang"
+output: html_document
+#runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(shiny)
+library(plotly)
+library(DT)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r, echo=FALSE}
+# Simulated data with realistic trend
+set.seed(42)
+mock_vaccine <- data.frame(
+  Vaccine = rep(c("H1N1", "H5N1", "H7N9"), each = 50),
+  Reactogenicity = round(c(
+    rnorm(50, mean = 5.0, sd = 2.0),  # Higher variability for H1N1
+    rnorm(50, mean = 3.0, sd = 1.5),  # Lower for H5N1
+    rnorm(50, mean = 4.0, sd = 1.8)   # Intermediate for H7N9
+  ), 2),
+  Adjuvant = sample(c("MF59", "AS03", "None"), 150, replace = TRUE),
+  GMT_FoldChange = round(c(
+    rnorm(50, mean = 4.0, sd = 1.2),  # Higher immune response for H1N1
+    rnorm(50, mean = 2.5, sd = 0.8),  # Lower for H5N1
+    rnorm(50, mean = 3.2, sd = 1.0)   # Intermediate for H7N9
+  ), 2),
+  Seroprotection_Rate = round(c(
+    runif(50, 70, 90),  # Higher seroprotection for H1N1
+    runif(50, 30, 50),  # Lower for H5N1
+    runif(50, 50, 70)   # Intermediate for H7N9
+  ), 1)
+)
+
+mock_vaccine$Reactogenicity <- pmax(pmin(mock_vaccine$Reactogenicity, 10), 0)
+```
+
+## **Widget 1: Reactogenicity by Vaccine Type**
+
+```{r, echo=FALSE}
+# Interactive boxplot
+# Colored, clean tooltip with only 2 items
+p1 <- ggplot(mock_vaccine, aes(
+  x = Vaccine,
+  y = Reactogenicity,
+  color = Vaccine,
+  text = paste("Vaccine Type:", Vaccine,
+               "<br>Reaction Severity:", Reactogenicity))
+) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(width = 0.2, alpha = 0.7) +
+  labs(
+    title = "Reactogenicity by Vaccine Type",
+    x = "Vaccine Type",
+    y = "Reaction Severity (Scale: 0–10)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "right")
+
+ggplotly(p1, tooltip = "text")
+
+```
+
+### **Key Takeaways**
+
+-   Reactogenicity varies across vaccine types, with H1N1 showing both higher reaction severity and variability.
+-   H5N1 exhibits lower reaction severity compared to other vaccines.
+-   Understanding these differences can inform vaccine formulation improvements.
+
+## **Widget 2: Immunogenicity vs. Reactogenicity Summary**
+
+```{r, echo=FALSE}
+# Interactive table
+table_data <- mock_vaccine %>%
+  select(Vaccine, Adjuvant, GMT_FoldChange, Seroprotection_Rate, Reactogenicity)
+
+colnames(table_data) <- c(
+  "Vaccine<br>Type", 
+  "Adjuvant<br>Used", 
+  "Immune Response<br>(GMT Fold-Change)", 
+  "Seroprotection<br>Rate (%)", 
+  "Reaction Severity<br>(0–10)"
+)
+
+datatable(
+  table_data,
+  escape = FALSE,  # enables <br> line breaks in header
+  options = list(
+    pageLength = 10,
+    autoWidth = TRUE,
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    searchHighlight = TRUE
+  ),
+  rownames = FALSE
+)
+
+```
+
+### **Key Takeaways**
+
+-   The table allows sorting and filtering to explore relationships between vaccine type, immunogenicity, and reactogenicity.
+-   H1N1 has the highest immune response, followed by H7N9, with H5N1 being the lowest.
+-   Some adjuvants (e.g., MF59) may boost immune response while keeping reactogenicity lower.
+-   This information helps in optimizing vaccine formulations.
